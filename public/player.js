@@ -1,7 +1,12 @@
 const video = document.getElementById("video");
-const speed = document.getElementById("speed");
-const speedVal = document.getElementById("speedVal");
+const yt = document.getElementById("yt");
 const logo = document.getElementById("logo");
+
+const settingsBtn = document.getElementById("settingsBtn");
+const settingsPanel = document.getElementById("settingsPanel");
+const speedSelect = document.getElementById("speedSelect");
+const qualitySelect = document.getElementById("qualitySelect");
+const screenshotBtn = document.getElementById("screenshotBtn");
 
 const params = new URLSearchParams(window.location.search);
 const url = params.get("url");
@@ -9,45 +14,78 @@ const logoUrl = params.get("logo");
 
 logo.src = logoUrl || "/public/logo.png";
 
-// HLS / Normal playback
-if (url.endsWith(".m3u8")) {
-  if (Hls.isSupported()) {
-    const hls = new Hls({
-      maxBufferLength: 60
-    });
+let hls = null;
+
+/* 🔍 YouTube detection */
+function isYouTube(u) {
+  return u.includes("youtube.com") || u.includes("youtu.be");
+}
+
+function getYTid(u) {
+  if (u.includes("youtu.be")) return u.split("/").pop();
+  return new URL(u).searchParams.get("v");
+}
+
+/* ▶️ LOAD VIDEO */
+if (isYouTube(url)) {
+  yt.src = `https://www.youtube.com/embed/${getYTid(url)}?autoplay=1&rel=0`;
+  yt.style.display = "block";
+} else {
+  video.style.display = "block";
+
+  if (url.endsWith(".m3u8") && Hls.isSupported()) {
+    hls = new Hls();
     hls.loadSource(url);
     hls.attachMedia(video);
 
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+    hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+      qualitySelect.innerHTML = `<option value="auto">Auto</option>`;
+      data.levels.forEach((lvl, i) => {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.text = lvl.height + "p";
+        qualitySelect.appendChild(opt);
+      });
       video.play();
     });
-
   } else {
     video.src = url;
+    video.play();
   }
-} else {
-  video.src = url;
 }
 
-// Speed control
-speed.oninput = () => {
-  video.playbackRate = speed.value;
-  speedVal.innerText = speed.value + "x";
+/* ⚙️ SETTINGS TOGGLE */
+settingsBtn.onclick = () => {
+  settingsPanel.style.display =
+    settingsPanel.style.display === "block" ? "none" : "block";
 };
 
-// Resume playback
-video.addEventListener("timeupdate", () => {
-  localStorage.setItem(url, video.currentTime);
-});
+/* ⏩ SPEED */
+speedSelect.onchange = () => {
+  video.playbackRate = parseFloat(speedSelect.value);
+};
 
-video.addEventListener("loadedmetadata", () => {
-  const last = localStorage.getItem(url);
-  if (last) video.currentTime = last;
-});
-
-// Picture in Picture
-video.addEventListener("dblclick", async () => {
-  if (document.pictureInPictureEnabled) {
-    await video.requestPictureInPicture();
+/* 🎚 QUALITY */
+qualitySelect.onchange = () => {
+  if (!hls) return;
+  if (qualitySelect.value === "auto") {
+    hls.currentLevel = -1;
+  } else {
+    hls.currentLevel = parseInt(qualitySelect.value);
   }
-});
+};
+
+/* 📸 SCREENSHOT */
+screenshotBtn.onclick = () => {
+  if (!video.videoWidth) return;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext("2d").drawImage(video, 0, 0);
+
+  const a = document.createElement("a");
+  a.href = canvas.toDataURL("image/png");
+  a.download = "screenshot.png";
+  a.click();
+};
