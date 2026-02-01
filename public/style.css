@@ -99,3 +99,11 @@ video, iframe {
   padding: 6px 12px;
   border-radius: 6px;
 }
+.watermark {
+  position: absolute;
+  bottom: 70px;
+  right: 15px;
+  font-size: 14px;
+  color: rgba(255,255,255,0.7);
+  z-index: 15;
+}
