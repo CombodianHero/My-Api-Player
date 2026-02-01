@@ -4,25 +4,21 @@ import { fileURLToPath } from "url";
 
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PORT = process.env.PORT || 3000;
 
 app.use("/public", express.static(path.join(__dirname, "public")));
 
 app.get("/apiplayer", (req, res) => {
-  const videoUrl = req.query.url;
-  const logo = req.query.logo || "/public/logo.png";
+  const url = req.query.url;
+  if (!url) return res.send("Missing video url");
 
-  if (!videoUrl) return res.send("Missing video URL");
+  if (url.includes("youtube.com") || url.includes("youtu.be")) {
+    return res.sendFile(path.join(__dirname, "public/player.html"));
+  }
 
   res.sendFile(path.join(__dirname, "public/player.html"));
 });
 
-app.get("/config", (req, res) => {
-  res.json({
-    url: req.query.url,
-    logo: req.query.logo || "/public/logo.png"
-  });
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
 });
-
-app.listen(3000, () =>
-  console.log("✅ Player running → http://localhost:3000/apiplayer")
-);
